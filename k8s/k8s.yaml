@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pablo-giraldo
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc-pablo
+  namespace: pablo-giraldo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pablogiraldo-configmap
+  namespace: pablo-giraldo
+data:
+  MY_DATABASE_DRIVER: "mysql"
+  DB_HOST: mysql-service-pablo  # Cambiado a mysql-service-pablo
+  DB_USER_NAME: pablo
+  DB_NAME: db_user
+  DB_PORT: "3306"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-pablo-inicial
+  namespace: pablo-giraldo
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS db_user;
+    USE db_user;
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(50),
+        apellido VARCHAR(50),
+        edad INT,
+        sexo CHAR(1)
+    );
+    INSERT INTO usuarios (nombre, apellido, edad, sexo) VALUES ('Maria', 'Rojas', 30, 'F');
+    CREATE USER 'pablo'@'%' IDENTIFIED BY 'rootpwd';
+    GRANT ALL PRIVILEGES ON *.* TO 'pablo'@'%' WITH GRANT OPTION;
+    FLUSH PRIVILEGES;
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pablo-secret
+  namespace: pablo-giraldo
+type: Opaque
+data:
+  DB_PASSWORD: cm9vdHB3ZA==  # "rootpwd" en base64
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment-pablo
+  namespace: pablo-giraldo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql-pablo
+        image: mysql:5.7
+        envFrom:
+          - configMapRef:
+              name: pablogiraldo-configmap
+          - secretRef:
+              name: pablo-secret
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: pablo-secret
+                key: DB_PASSWORD
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: pablogiraldo-configmap
+                key: DB_NAME
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+          - name: mysql-storage
+            mountPath: /var/lib/mysql
+          - name: init-scripts
+            mountPath: /docker-entrypoint-initdb.d
+            readOnly: true
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc-pablo
+        - name: init-scripts
+          configMap:
+            name: mysql-pablo-inicial
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service-pablo
+  namespace: pablo-giraldo
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    protocol: TCP
+    targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-pablo
+  namespace: pablo-giraldo
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      initContainers:
+      - name: wait-before-starting
+        image: busybox
+        command: ["sh", "-c", "echo 'Esperando 50 segundos antes de iniciar...'; sleep 50"]
+      containers:
+      - name: backend-container
+        image: ppablo1999/proyecto_final_pablo:latest
+        envFrom:
+        - configMapRef:
+            name: pablogiraldo-configmap
+        - secretRef:
+            name: pablo-secret
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service-pablo
+  namespace: pablo-giraldo
+spec:
+  type: LoadBalancer
+  selector:
+    app: backend
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 3000
