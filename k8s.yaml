@@ -101,8 +101,7 @@ spec:
             readOnly: true
       volumes:
         - name: mysql-storage
-          persistentVolumeClaim:
-            claimName: mysql-pvc-pablo
+          emptyDir: {}
         - name: init-scripts
           configMap:
             name: mysql-pablo-inicial
