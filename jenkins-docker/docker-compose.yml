@@ -1,0 +1,14 @@
+
+services:
+  jenkins:
+    image: ppablo1999/jenkins-docker:latest
+    container_name: jenkins-pablo
+    ports:
+      - 8089:8080
+      - 50089:50000
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: on-failure
+volumes:
+  jenkins_home:
