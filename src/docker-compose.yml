@@ -11,7 +11,7 @@ services:
       DB_USER_NAME: root
       DB_PASSWORD: rootpwd
       DB_NAME: database
-      DB_PORT: 3306
+      DB_PORT: 3309
     depends_on:
       - db
     ports:
