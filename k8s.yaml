@@ -1,215 +1,91 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: pablo-giraldo
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mysql-pvc-pablo
-  namespace: pablo-giraldo
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pablogiraldo-configmap
-  namespace: pablo-giraldo
-data:
-  MY_DATABASE_DRIVER: "mysql"
-  DB_HOST: mysql-service-pablo  # Cambiado a mysql-service-pablo
-  DB_USER_NAME: pablo
-  DB_NAME: db_user
-  DB_PORT: "3306"
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mysql-pablo-inicial
-  namespace: pablo-giraldo
-data:
-  init.sql: |
-    CREATE DATABASE IF NOT EXISTS db_user;
-    USE db_user;
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        nombre VARCHAR(50),
-        apellido VARCHAR(50),
-        edad INT,
-        sexo CHAR(1)
-    );
-    INSERT INTO usuarios (nombre, apellido, edad, sexo) VALUES ('Maria', 'Rojas', 30, 'F');
-    CREATE USER 'pablo'@'%' IDENTIFIED BY 'rootpwd';
-    GRANT ALL PRIVILEGES ON *.* TO 'pablo'@'%' WITH GRANT OPTION;
-    FLUSH PRIVILEGES;
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: pablo-secret
-  namespace: pablo-giraldo
-type: Opaque
-data:
-  DB_PASSWORD: cm9vdHB3ZA==  # "rootpwd" en base64
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mysql-deployment-pablo
-  namespace: pablo-giraldo
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mysql
-  template:
-    metadata:
-      labels:
-        app: mysql
-    spec:
-      containers:
-      - name: mysql-pablo
-        image: mysql:5.7
-        envFrom:
-          - configMapRef:
-              name: pablogiraldo-configmap
-          - secretRef:
-              name: pablo-secret
-        env:
-          - name: MYSQL_ROOT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: pablo-secret
-                key: DB_PASSWORD
-          - name: MYSQL_DATABASE
-            valueFrom:
-              configMapKeyRef:
-                name: pablogiraldo-configmap
-                key: DB_NAME
-        ports:
-        - containerPort: 3306
-        volumeMounts:
-          - name: mysql-storage
-            mountPath: /var/lib/mysql
-          - name: init-scripts
-            mountPath: /docker-entrypoint-initdb.d
-            readOnly: true
-      volumes:
-        - name: mysql-storage
-          emptyDir: {}
-        - name: init-scripts
-          configMap:
-            name: mysql-pablo-inicial
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql-service-pablo
-  namespace: pablo-giraldo
-spec:
-  selector:
-    app: mysql
-  ports:
-  - port: 3306
-    protocol: TCP
-    targetPort: 3306
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: backend-pablo
-  namespace: pablo-giraldo
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: backend
-  template:
-    metadata:
-      labels:
-        app: backend
-    spec:
-      initContainers:
-      - name: wait-before-starting
-        image: busybox
-        command: ["sh", "-c", "echo 'Esperando 50 segundos antes de iniciar...'; sleep 50"]
-      containers:
-      - name: backend-container
-        image: ppablo1999/proyecto_final_pablo:latest
-        envFrom:
-        - configMapRef:
-            name: pablogiraldo-configmap
-        - secretRef:
-            name: pablo-secret
-        ports:
-        - containerPort: 3000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: backend-service-pablo
-  namespace: pablo-giraldo
-spec:
-  type: LoadBalancer
-  selector:
-    app: backend
-  ports:
-  - port: 80
-    protocol: TCP
-    targetPort: 3000
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: backup-db-pablo
-  namespace: pablo-giraldo
-spec:
-  schedule: "0 */3 * * *"  # Cada 3 horas
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: backup-db-container
-            image: amazon/aws-cli:latest  # Imagen de AWS CLI
-            command:
-              - "sh"
-              - "-c"
-              - |
-                # Conectarse a la base de datos y realizar el backup
-                export DB_PASSWORD=$(kubectl get secret pablo-secret -n pablo-giraldo -o jsonpath="{.data.DB_PASSWORD}" | base64 --decode)
-                export DB_HOST=$(kubectl get configmap pablogiraldo-configmap -n pablo-giraldo -o jsonpath="{.data.DB_HOST}")
-                export DB_NAME=$(kubectl get configmap pablogiraldo-configmap -n pablo-giraldo -o jsonpath="{.data.DB_NAME}")
-                export DB_USER=$(kubectl get configmap pablogiraldo-configmap -n pablo-giraldo -o jsonpath="{.data.DB_USER_NAME}")
-                
-                # Crear el respaldo en formato SQL o CSV dependiendo de la base de datos
-                mysqldump -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME > /tmp/backup.sql
+name: Workflow to deploy on k8's or DigitalOcean
 
-                # Subir el archivo al bucket de S3
-                TIMESTAMP=$(date +\%Y\%m\%d\%H\%M\%S)
-                aws s3 cp /tmp/backup.sql s3://bucket-codigo-backup/giraldo-pablo/database/$TIMESTAMP/backup.sql
-            env:
-            - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: github-secrets
-                  key: AWS_ACCESS_KEY_ID  # El nombre del secreto de GitHub
-            - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: github-secrets
-                  key: AWS_SECRET_ACCESS_KEY  # El nombre del secreto de GitHub
-            volumeMounts:
-              - name: s3-config
-                mountPath: /root/.aws
-                readOnly: true
-          restartPolicy: OnFailure
-          volumes:
-            - name: s3-config
-              secret:
-                secretName: aws-secrets
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Crear .env file basado en DB_DRIVER
+        run: |
+          echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" >> .env
+          
+          if [ "${{ secrets.DB_DRIVER }}" == "mysql" ]; then
+            echo "DB_HOST=${{ secrets.MYSQL_DB_HOST }}" >> .env
+            echo "DB_USER_NAME=${{ secrets.MYSQL_DB_USER_NAME }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.MYSQL_DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.MYSQL_DB_NAME }}" >> .env
+            echo "DB_PORT=${{ secrets.MYSQL_DB_PORT }}" >> .env
+          elif [ "${{ secrets.DB_DRIVER }}" == "postgres" ]; then
+            echo "DB_HOST=${{ secrets.POSTGRES_DB_HOST }}" >> .env
+            echo "DB_USER_NAME=${{ secrets.POSTGRES_DB_USER_NAME }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.POSTGRES_DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.POSTGRES_DB_NAME }}" >> .env
+            echo "DB_PORT=${{ secrets.POSTGRES_DB_PORT }}" >> .env
+          elif [ "${{ secrets.DB_DRIVER }}" == "mongo" ]; then
+            echo "DB_HOST=${{ secrets.MONGO_DB_HOST }}" >> .env
+            echo "DB_USER_NAME=${{ secrets.MONGO_DB_USER_NAME }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.MONGO_DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.MONGO_DB_NAME }}" >> .env
+            echo "DB_PORT=${{ secrets.MONGO_DB_PORT }}" >> .env
+          else
+            echo "Error: DB_DRIVER no es válido"
+            exit 1
+          fi
+
+      - name: Construir imagen del backend
+        run: |
+          docker build -t ppablo1999/proyecto_final_pablo:latest ./src
+
+      - name: Autenticando en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      
+      - name: Publicar imagen en Docker Hub
+        run: |
+          docker push ppablo1999/proyecto_final_pablo:latest
+  
+  deploy:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+      
+      - name: Crear base de datos y usuario si no existen
+        run: |
+          if [ "${{ secrets.DB_DRIVER }}" == "mysql" ]; then
+            mysql -h ${{ secrets.MYSQL_DB_HOST }} -u ${{ secrets.MYSQL_DB_USER_NAME }} -p${{ secrets.MYSQL_DB_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS ${{ secrets.MYSQL_DB_NAME }};"
+            mysql -h ${{ secrets.MYSQL_DB_HOST }} -u root -p${{ secrets.MYSQL_DB_ROOT_PASSWORD }} -e "CREATE USER IF NOT EXISTS '${{ secrets.MYSQL_DB_USER_NAME }}'@'%' IDENTIFIED BY '${{ secrets.MYSQL_DB_PASSWORD }}'; GRANT ALL PRIVILEGES ON ${{ secrets.MYSQL_DB_NAME }}.* TO '${{ secrets.MYSQL_DB_USER_NAME }}'@'%'; FLUSH PRIVILEGES;"
+          elif [ "${{ secrets.DB_DRIVER }}" == "postgres" ]; then
+            PGPASSWORD=${{ secrets.POSTGRES_DB_PASSWORD }} psql -h ${{ secrets.POSTGRES_DB_HOST }} -U ${{ secrets.POSTGRES_DB_USER_NAME }} -c "CREATE DATABASE ${{ secrets.POSTGRES_DB_NAME }};"
+            PGPASSWORD=${{ secrets.POSTGRES_DB_PASSWORD }} psql -h ${{ secrets.POSTGRES_DB_HOST }} -U postgres -c "CREATE USER ${{ secrets.POSTGRES_DB_USER_NAME }} WITH ENCRYPTED PASSWORD '${{ secrets.POSTGRES_DB_PASSWORD }}'; GRANT ALL PRIVILEGES ON DATABASE ${{ secrets.POSTGRES_DB_NAME }} TO ${{ secrets.POSTGRES_DB_USER_NAME }};"
+          elif [ "${{ secrets.DB_DRIVER }}" == "mongo" ]; then
+            mongo --host ${{ secrets.MONGO_DB_HOST }} --username ${{ secrets.MONGO_DB_USER_NAME }} --password ${{ secrets.MONGO_DB_PASSWORD }} --eval "db.getSiblingDB('${{ secrets.MONGO_DB_NAME }}').createCollection('init'); db.getSiblingDB('admin').runCommand({ createUser: '${{ secrets.MONGO_DB_USER_NAME }}', pwd: '${{ secrets.MONGO_DB_PASSWORD }}', roles: [{ role: 'readWrite', db: '${{ secrets.MONGO_DB_NAME }}' }] });"
+          fi
+
+      - name: Configurar despliegue basado en el recurso seleccionado
+        run: |
+          if [ "${{ secrets.RESOURCE }}" == "k8" ]; then
+            echo "Desplegando en Kubernetes..."
+            kubectl apply -f k8s.yaml
+          elif [ "${{ secrets.RESOURCE }}" == "digital-ocean" ]; then
+            echo "Desplegando en DigitalOcean Droplet..."
+            ssh -o StrictHostKeyChecking=no ${{ secrets.DIGITAL_OCEAN_USER }}@${{ secrets.DIGITAL_OCEAN_HOST }} << 'EOF'
+              cd /path/to/project
+              echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" > .env
+              docker-compose down
+              docker-compose up -d --build
+            EOF
+          else
+            echo "Error: RESOURCE no es válido"
+            exit 1
+          fi
