@@ -25,7 +25,7 @@ data:
   DB_HOST: mysql-service-pablo  # Cambiado a mysql-service-pablo
   DB_USER_NAME: pablo
   DB_NAME: db_user
-  DB_PORT: "3309"
+  DB_PORT: "3307"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -92,7 +92,7 @@ spec:
                 name: pablogiraldo-configmap
                 key: DB_NAME
         ports:
-        - containerPort: 3309
+        - containerPort: 3307
         volumeMounts:
           - name: mysql-storage
             mountPath: /var/lib/mysql
@@ -115,9 +115,9 @@ spec:
   selector:
     app: mysql
   ports:
-  - port: 3309
+  - port: 3307
     protocol: TCP
-    targetPort: 3309
+    targetPort: 3307
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -192,18 +192,12 @@ spec:
 
                 # Subir el archivo al bucket de S3
                 TIMESTAMP=$(date +\%Y\%m\%d\%H\%M\%S)
-                aws s3 cp /tmp/backup.sql s3://bucket-codigo-backup/giraldo-pablo/database/$TIMESTAMP/backup.sql
+                aws s3 cp /tmp/backup.sql s3://bucket-codigo-backup/apellido-alumno/database/$TIMESTAMP/backup.sql
             env:
             - name: AWS_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: github-secrets
-                  key: AWS_ACCESS_KEY_ID  # El nombre del secreto de GitHub
+              value: "AKIAXSQVN3N3KB62WCTY"
             - name: AWS_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: github-secrets
-                  key: AWS_SECRET_ACCESS_KEY  # El nombre del secreto de GitHub
+              value: "tu-access-key-id-aqui"
             volumeMounts:
               - name: s3-config
                 mountPath: /root/.aws
@@ -212,4 +206,4 @@ spec:
           volumes:
             - name: s3-config
               secret:
-                secretName: aws-secrets
+                secretName: aws-secrets  # Asegúrate de tener un secreto con las credenciales de AWS
