@@ -11,7 +11,7 @@ services:
       DB_USER_NAME: root
       DB_PASSWORD: rootpwd
       DB_NAME: database
-      DB_PORT: 3306
+      DB_PORT: 3310
     depends_on:
       - db
     ports:
@@ -29,7 +29,7 @@ services:
       - db_data:/var/lib/mysql
       - ./data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - 3306:3306
+      - 3310:3310
     networks:
       - my_network
 
