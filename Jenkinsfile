@@ -28,7 +28,7 @@ pipeline {
                         cd ~/codigo/pablogiraldo/ &&
                         rm -rf * &&
                         git clone -b jenkins https://github.com/Ppablo/ExamenDevops.git &&
-                        cd ExamenDevops &&
+                        cd ExamenDevops/src &&
                         docker compose up -d
                         "
                     '''
