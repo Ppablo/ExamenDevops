@@ -12,17 +12,17 @@ jobs:
       - name: Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: Construir imagen del backend
+      - name: Construir imagen
         run: |
           docker build -t ppablo1999/proyecto_final_pablo:latest ./src
 
-      - name: Autenticando en dockerhub
+      - name: Autenticando
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       
-      - name: Publicando imagen al dockerhub.....
+      - name: Publicando imagen
         run: |
           docker push ppablo1999/proyecto_final_pablo:latest
   

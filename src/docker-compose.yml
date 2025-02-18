@@ -29,7 +29,7 @@ services:
       - db_data:/var/lib/mysql
       - ./data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - 3309:3306
+      - 3309:3309
     networks:
       - my_network
 
