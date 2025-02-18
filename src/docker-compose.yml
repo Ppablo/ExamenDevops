@@ -1,4 +1,4 @@
-version: "3"
+version: '3.8'
 
 services:
   app:
@@ -7,11 +7,11 @@ services:
       dockerfile: Dockerfile
     environment:
       MY_DATABASE_DRIVER: "mysql"
-      DB_HOST: db
-      DB_USER_NAME: root
-      DB_PASSWORD: rootpwd
-      DB_NAME: database
-      DB_PORT: 3306
+      DB_HOST: ${DB_HOST}
+      DB_USER_NAME: ${DB_USER_NAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_PORT: ${DB_PORT}
     depends_on:
       - db
     ports:
@@ -19,12 +19,13 @@ services:
     restart: always
     networks:
       - my_network
+
   db:
     image: mysql:5.7
     container_name: db_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: rootpwd
-      MYSQL_DATABASE: database
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
       - db_data:/var/lib/mysql
       - ./data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql
@@ -33,10 +34,9 @@ services:
     networks:
       - my_network
 
-volumes:
-  db_data:
-
 networks:
   my_network:
     driver: bridge
 
+volumes:
+  db_data:
