@@ -3,7 +3,7 @@ name: Workflow to deploy on k8's
 on:
   push:
     branches:
-      - develop
+      - modificador
 
 jobs:
   build-backend:
