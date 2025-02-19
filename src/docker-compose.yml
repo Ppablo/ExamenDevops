@@ -9,9 +9,9 @@ services:
     environment:
       MY_DATABASE_DRIVER: "mysql"
       DB_HOST: db
-      DB_USER_NAME: root
+      DB_USER_NAME: pablo
       DB_PASSWORD: rootpwd
-      DB_NAME: database
+      DB_NAME: db_user
       DB_PORT: 3310
     depends_on:
       - db
@@ -25,7 +25,7 @@ services:
     container_name: db_mysql_pablo
     environment:
       MYSQL_ROOT_PASSWORD: rootpwd
-      MYSQL_DATABASE: database
+      MYSQL_DATABASE: db_user
     volumes:
       - db_data:/var/lib/mysql
     ports:
@@ -41,9 +41,9 @@ services:
     volumes:
       - ./backup:/backup
     environment:
-      - MYSQL_USER=root
+      - MYSQL_USER=pablo
       - MYSQL_PASS=rootpwd
-      - MYSQL_DB=database
+      - MYSQL_DB=db_user
       - CRON_TIME= 0 * * * *
       - MYSQL_HOST=db
       - MYSQL_PORT=3310
