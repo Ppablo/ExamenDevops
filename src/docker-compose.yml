@@ -8,11 +8,11 @@ services:
       dockerfile: Dockerfile
     environment:
       MY_DATABASE_DRIVER: "mysql"
-      DB_HOST: db
+      DB_HOST: db  
       DB_USER_NAME: pablo
       DB_PASSWORD: rootpwd
       DB_NAME: database
-      DB_PORT: 3315
+      DB_PORT: 3306
     depends_on:
       - db
     ports:
@@ -20,18 +20,22 @@ services:
     restart: always
     networks:
       - my_network
+
   db:
-    image: ppablo1999/mysql_pablo_var:latest
-    container_name: db_mysql_pablo
+    image: mysql:5.7
+    container_name: db_mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpwd
       MYSQL_DATABASE: database
+      MYSQL_USER: pablo
+      MYSQL_PASSWORD: rootpwd
     volumes:
       - db_data:/var/lib/mysql
     ports:
       - 3315:3306
     networks:
       - my_network
+
   dbBackup:
     image: fradelg/mysql-cron-backup
     container_name: dbBackup_pablo
@@ -44,14 +48,13 @@ services:
       - MYSQL_USER=pablo
       - MYSQL_PASS=rootpwd
       - MYSQL_DB=database
-      - CRON_TIME= 0 * * * *
-      - MYSQL_HOST=db
-      - MYSQL_PORT=3315
+      - CRON_TIME=0 * * * *
+      - MYSQL_HOST=db  
+      - MYSQL_PORT=3306 
       - TIMEOUT=10s
       - INIT_BACKUP=1      
     networks:
       - my_network
-
 
 volumes:
   db_data:
