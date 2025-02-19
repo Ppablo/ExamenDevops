@@ -20,18 +20,22 @@ services:
     networks:
       - my_network
   db:
-    image: mysql:5.7
-    container_name: db_mysql
+    image: fradelg/mysql-cron-backup
+    container_name: db_mysql_pablo
     environment:
-      MYSQL_ROOT_PASSWORD: rootpwd
-      MYSQL_DATABASE: database
+      - MYSQL_USER=root
+      - MYSQL_PASS=rootpwd
+      - MYSQL_DB=database
+      - CRON_TIME= 0 * * * *
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3310
+      - TIMEOUT=10s
+      - INIT_BACKUP=1  
     volumes:
-      - db_data:/var/lib/mysql
-      - ./data/mysql_data.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - 3310:3310
+      - ./backup:/backup
     networks:
       - my_network
+    restart: unless-stopped
 
 volumes:
   db_data:
