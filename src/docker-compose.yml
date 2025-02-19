@@ -12,7 +12,7 @@ services:
       DB_USER_NAME: pablo
       DB_PASSWORD: rootpwd
       DB_NAME: database
-      DB_PORT: 3310
+      DB_PORT: 3306
     depends_on:
       - db
     ports:
@@ -29,7 +29,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports:
-      - 3310:3310
+      - 3306:3306
     networks:
       - my_network
   dbBackup:
@@ -46,7 +46,7 @@ services:
       - MYSQL_DB=database
       - CRON_TIME= 0 * * * *
       - MYSQL_HOST=db
-      - MYSQL_PORT=3310
+      - MYSQL_PORT=3306
       - TIMEOUT=10s
       - INIT_BACKUP=1      
     networks:
