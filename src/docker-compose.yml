@@ -20,22 +20,17 @@ services:
     networks:
       - my_network
   db:
-    image: fradelg/mysql-cron-backup
+    image: ppablo1999/mysql_pablo_var:latest
     container_name: db_mysql_pablo
     environment:
-      - MYSQL_USER=root
-      - MYSQL_PASS=rootpwd
-      - MYSQL_DB=database
-      - CRON_TIME= 0 * * * *
-      - MYSQL_HOST=db
-      - MYSQL_PORT=3310
-      - TIMEOUT=10s
-      - INIT_BACKUP=1  
+      MYSQL_ROOT_PASSWORD: rootpwd
+      MYSQL_DATABASE: database
     volumes:
-      - ./backup:/backup
+      - db_data:/var/lib/mysql
+    ports:
+      - 3310:3310
     networks:
       - my_network
-    restart: unless-stopped
 
 volumes:
   db_data:
@@ -43,4 +38,3 @@ volumes:
 networks:
   my_network:
     driver: bridge
-
