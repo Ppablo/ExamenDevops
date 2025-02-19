@@ -32,6 +32,26 @@ services:
       - 3310:3310
     networks:
       - my_network
+  dbBackup:
+    image: fradelg/mysql-cron-backup
+    container_name: dbBackup_pablo
+    depends_on:
+      - db
+    restart: always
+    volumes:
+      - ./backup:/backup
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_PASS=rootpwd
+      - MYSQL_DB=database
+      - CRON_TIME= 0 * * * *
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3310
+      - TIMEOUT=10s
+      - INIT_BACKUP=1      
+    networks:
+      - my_network
+
 
 volumes:
   db_data:
