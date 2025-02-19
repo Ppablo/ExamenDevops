@@ -27,7 +27,7 @@ jobs:
 
       - name: Construir imagen del backend
         run: |
-          docker build -t ppablo1999/proyecto_final_pablo:latest ./src
+          docker build -t ppablo1999/proyecto_final_pablo_var:latest ./src
 
       - name: Autenticando en Docker Hub
         uses: docker/login-action@v3
@@ -37,7 +37,7 @@ jobs:
       
       - name: Publicar imagen en Docker Hub
         run: |
-          docker push ppablo1999/proyecto_final_pablo:latest
+          docker push ppablo1999/proyecto_final_pablo_var:latest
   
   deploy:
     needs: build-backend
@@ -70,7 +70,7 @@ jobs:
             echo "DB_DRIVER=${{ secrets.DB_DRIVER }}" > .env
             docker-compose down
             docker-compose up -d --build
-            EOF
+EOF
           else
             echo "Error: RESOURCE no es válido"
             exit 1
